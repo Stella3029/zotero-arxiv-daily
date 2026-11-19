@@ -6,8 +6,9 @@ zotero:
 email:
   sender: ${oc.env:SENDER}
   receiver: ${oc.env:RECEIVER}
-  smtp_server: smtp.qq.com
+  smtp_server: mail.sjtu.edu.cn
   smtp_port: 465
+  smtp_user: stella3029
   sender_password: ${oc.env:SENDER_PASSWORD}
 
 llm:
@@ -16,12 +17,16 @@ llm:
     base_url: ${oc.env:OPENAI_API_BASE}
   api_mode: chat_completion
   generation_kwargs:
-    model: gpt-4o-mini
+    model: deepseek-flash
+  language: Chinese
 
 source:
   arxiv:
     category: ["cs.AI","cs.CV","cs.LG","cs.CL"]
 
 executor:
-  debug: ${oc.env:DEBUG,null}
+  debug: ${oc.decode:${oc.env:DEBUG,false}}
   source: ['arxiv']
+  max_paper_num: 10
+  send_empty: false
+  reranker: local

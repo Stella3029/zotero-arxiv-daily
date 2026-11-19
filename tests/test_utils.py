@@ -133,6 +133,45 @@ def test_send_email_starttls_success(config, monkeypatch):
     assert "text/html" in body
 
 
+def test_send_email_ssl_with_separate_login(config, monkeypatch):
+    config.email.smtp_port = 465
+    config.email.smtp_user = "campus-login"
+    calls = []
+    sent = []
+    stub = make_stub_smtp(sent)
+
+    class SSLServer(stub):
+        def __init__(self, host, port, **kwargs):
+            calls.append((host, port, kwargs["timeout"]))
+
+        def login(self, username, password):
+            calls.append((username, password))
+
+    def unexpected_plain_smtp(*args, **kwargs):
+        pytest.fail("Port 465 must connect using SSL directly")
+
+    monkeypatch.setattr(smtplib, "SMTP", unexpected_plain_smtp)
+    monkeypatch.setattr(smtplib, "SMTP_SSL", SSLServer)
+    send_email(config, "<html>campus mail</html>")
+    assert calls == [("localhost", 465, 30), ("campus-login", "test")]
+    assert sent[0][0] == "test@example.com"
+    assert sent[0][1] == ["test@example.com"]
+
+
+def test_send_email_login_defaults_to_sender(config, monkeypatch):
+    config.email.smtp_user = None
+    logins = []
+    stub = make_stub_smtp([])
+
+    class Server(stub):
+        def login(self, username, password):
+            logins.append(username)
+
+    monkeypatch.setattr(smtplib, "SMTP", Server)
+    send_email(config, "<html>default login</html>")
+    assert logins == [config.email.sender]
+
+
 def test_send_email_falls_back_to_ssl(config, monkeypatch):
     sent = []
     call_count = {"smtp": 0}
